@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenGPT Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    pre {
+      background-color: #1f2937;
+      padding: 1em;
+      border-radius: 0.5em;
+      overflow-x: auto;
+    }
+    code {
+      font-family: monospace;
+      color: #fcd34d;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white h-screen flex flex-col">
+
+  <div class="flex-1 overflow-y-auto p-4" id="chat-container"></div>
+
+  <div class="p-4 bg-gray-800 flex items-center gap-2">
+    <input id="message-input" type="text" placeholder="Type a message..."
+           class="flex-1 p-2 rounded bg-gray-700 text-white focus:outline-none" />
+    <button onclick="sendMessage()"
+            class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">Send</button>
+  </div>
+
+  <script>
+    const messageInput = document.getElementById("message-input");
+    const chatContainer = document.getElementById("chat-container");
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenGPT</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body[data-theme="dark"] {
+      --bg: #343541;
+      --text: #fff;
+      --input-bg: #40414f;
+      --user-msg: #3c3f58;
+      --bot-msg: #444654;
+    }
+
+    body[data-theme="light"] {
+      --bg: #f1f1f1;
+      --text: #000;
+      --input-bg: #fff;
+      --user-msg: #d0e2ff;
+      --bot-msg: #e3e3e3;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 250px;
+      background-color: var(--input-bg);
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 1px solid #555;
+    }
+
+    .sidebar h2 {
+      margin-top: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-session {
+      margin-bottom: 10px;
+      padding: 10px;
+      background-color: var(--bg);
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .chat-session:hover {
+      background-color: #666;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      padding: 15px;
+      background-color: var(--input-bg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #555;
+    }
+
+    .chat-window {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .message-wrapper {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .message-wrapper.user {
+      flex-direction: row-reverse;
+    }
+
+    .avatar {
+      font-size: 20px;
+      width: 32px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .message {
+      padding: 10px;
+      border-radius: 8px;
+      max-width: 70%;
+      position: relative;
+    }
+
+    .user .message {
+      background-color: var(--user-msg);
+    }
+
+    .bot .message {
+      background-color: var(--bot-msg);
+    }
+
+    .speaker-icon {
+      position: absolute;
+      right: -30px;
+      top: 8px;
+      cursor: pointer;
+      color: #ccc;
+    }
+
+    .input-area {
+      display: flex;
+      padding: 10px;
+      background-color: var(--input-bg);
+      gap: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      background-color: var(--bg);
+      color: var(--text);
+    }
+
+    button {
+      background-color: #10a37f;
+      border: none;
+      color: white;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0e8f6e;
+    }
+
+    .typing-dots {
+      display: inline-block;
+      font-weight: bold;
+      font-size: 22px;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0% { opacity: 0.2; }
+      20% { opacity: 1; }
+      100% { opacity: 0.2; }
+    }
+  </style>
+</head>
+<body data-theme="dark">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>
+      OpenGPT
+      <a href="/logout" title="Logout"><i class="bi bi-box-arrow-right"></i></a>
+    </h2>
+    <div class="chat-session" onclick="location.href='/chat/'">+ New Chat</div>
+    {% for session in sessions %}
+      <div class="chat-session" onclick="loadSession({{ session.id }})">
+        {{ session.title }}
+      </div>
+    {% empty %}
+      <p>No chats yet.</p>
+    {% endfor %}
+  </div>
+
+  <!-- Main Area -->
+  <div class="main">
+    <div class="topbar">
+      <div>OpenGPT</div>
+      <div>
+        <button onclick="toggleTheme()"><i class="bi bi-moon-stars"></i></button>
+        <button onclick="toggleVoice()" id="voiceToggleBtn"><i class="bi bi-volume-up"></i></button>
+      </div>
+    </div>
+
+    <div class="chat-window" id="chatBox"></div>
+
+    <div class="input-area">
+      <input type="text" id="userInput" placeholder="Type your message..." onkeypress="handleEnter(event)">
+      <button onclick="startListening()"><i class="bi bi-mic"></i></button>
+      <button onclick="sendMessage()"><i class="bi bi-send"></i></button>
+    </div>
+  </div>
+
+  <script>
+    let currentSessionId = null;
+    let speakOut = true;
+    let typingIndicator;
+
+    function handleEnter(e) {
+      if (e.key === "Enter") sendMessage();
+    }
+
+    function sendMessage() {
+      const input = document.getElementById("userInput");
+      const text = input.value.trim();
+      if (!text) return;
+
+      addMessage(text, "user");
+
+      typingIndicator = document.createElement("div");
+      typingIndicator.classList.add("message-wrapper", "bot");
+      typingIndicator.innerHTML =
+        <div class="avatar"><i class="bi bi-cpu"></i></div>
+        <div class="message bot">
+          <span class="typing-dots">...</span>
+        </div>
+      ;
+      document.getElementById("chatBox").appendChild(typingIndicator);
+      scrollToBottom();
+
+      fetch("/chat/api/", {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ message: text, session_id: currentSessionId })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (typingIndicator) typingIndicator.remove();
+        addMessage(data.response, "bot");
+        currentSessionId = data.session_id;
+        if (speakOut) speak(data.response);
+      })
+      .catch(err => {
+        if (typingIndicator) typingIndicator.remove();
+        addMessage("Something went wrong.", "bot");
+        console.error("Cohere API error:", err);
+      });
+
+      input.value = '';
+    }
+
+    function addMessage(text, sender) {
+      const wrapper = document.createElement("div");
+      wrapper.classList.add("message-wrapper", sender);
+
+      const avatar = document.createElement("div");
+      avatar.classList.add("avatar");
+      avatar.innerHTML = sender === "user" ? '<i class="bi bi-person"></i>' : '<i class="bi bi-cpu"></i>';
+
+      const msg = document.createElement("div");
+      msg.classList.add("message", sender);
+
+      const messageText = document.createElement("span");
+      messageText.classList.add("message-text");
+      messageText.textContent = text;
+      msg.appendChild(messageText);
+
+      if (sender === "bot") {
+        const speakBtn = document.createElement("i");
+        speakBtn.className = "bi bi-volume-up speaker-icon";
+        speakBtn.title = "Speak";
+        speakBtn.onclick = () => speak(messageText.textContent);
+        msg.appendChild(speakBtn);
+      }
+
+      wrapper.appendChild(avatar);
+      wrapper.appendChild(msg);
+      document.getElementById("chatBox").appendChild(wrapper);
+      scrollToBottom();
+    }
+
+    function scrollToBottom() {
+      const box = document.getElementById("chatBox");
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function startListening() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US';
+      recognition.start();
+      recognition.onresult = function(event) {
+        document.getElementById("userInput").value = event.results[0][0].transcript;
+        sendMessage();
+      }
+    }
+
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      speechSynthesis.speak(utterance);
+    }
+
+    function toggleVoice() {
+      speakOut = !speakOut;
+      const btn = document.getElementById("voiceToggleBtn");
+      btn.innerHTML = speakOut ? '<i class="bi bi-volume-up"></i>' : '<i class="bi bi-volume-mute"></i>';
+    }
+
+    function toggleTheme() {
+      const body = document.body;
+      body.dataset.theme = body.dataset.theme === "dark" ? "light" : "dark";
+    }
+
+    function loadSession(sessionId) {
+      fetch(/load_session/${sessionId}/)
+        .then(res => res.json())
+        .then(data => {
+          currentSessionId = sessionId;
+          const box = document.getElementById("chatBox");
+          box.innerHTML = '';
+          data.messages.forEach(msg => {
+            addMessage(msg.content, msg.sender);
+          });
+          scrollToBottom();
+        });
+    }
+  </script>
+</body>
+</html>
+
+
+    function addMessage(text, sender) {
+      const msgDiv = document.createElement("div");
+      msgDiv.className = `my-2 p-3 rounded max-w-xl whitespace-pre-wrap ${
+        sender === 'user' ? 'bg-blue-700 self-end text-right' : 'bg-gray-700 self-start text-left'
+      }`;
+
+      if (sender === 'bot') {
+        msgDiv.innerHTML = marked.parse(text);
+      } else {
+        msgDiv.textContent = text;
+      }
+
+      chatContainer.appendChild(msgDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+      return msgDiv;
+    }
+
+    async function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text) return;
+
+      addMessage(text, "user");
+      messageInput.value = "";
+
+      // Create a placeholder for the bot's response
+      const botMsgDiv = addMessage("", "bot");
+
+      try {
+        const response = await fetch("{% url 'send_message' %}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-CSRFToken": "{{ csrf_token }}"
+          },
+          body: new URLSearchParams({ message: text })
+        });
+
+        if (!response.ok) {
+          botMsgDiv.textContent = "Error: Failed to get response.";
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let fullText = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          fullText += chunk;
+
+          botMsgDiv.innerHTML = marked.parse(fullText);
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+      } catch (err) {
+        botMsgDiv.textContent = "Error contacting server.";
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>

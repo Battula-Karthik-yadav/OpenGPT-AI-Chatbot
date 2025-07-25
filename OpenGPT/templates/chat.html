@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenGPT Chat</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body[data-theme="dark"] {
+      --bg: #343541;
+      --text: #fff;
+      --input-bg: #40414f;
+      --user-msg: #3c3f58;
+      --bot-msg: #444654;
+    }
+    body[data-theme="light"] {
+      --bg: #f1f1f1;
+      --text: #000;
+      --input-bg: #fff;
+      --user-msg: #d0e2ff;
+      --bot-msg: #e3e3e3;
+    }
+    body {
+      margin: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+    }
+    /* File preview area */
+    #selectedFileName {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .blinking-cursor::after {
+      content: "|";
+      animation: blink 1s steps(2, start) infinite;
+      margin-left: 2px;
+    }
+
+```
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.toast {
+  visibility: hidden;
+  min-width: 180px;
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  border-radius: 8px;
+  padding: 12px 16px;
+  position: fixed;
+  z-index: 9999;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.3s ease, bottom 0.3s ease;
+}
+
+.toast.show {
+  visibility: visible;
+  opacity: 1;
+  bottom: 50px;
+}
+
+.file-preview {
+  background-color: var(--input-bg);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  max-width: 250px;
+  word-break: break-word;
+  position: relative;
+}
+.file-preview img {
+  max-width: 40px;
+  max-height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+.file-preview button {
+  background: none;
+  border: none;
+  color: red;
+  cursor: pointer;
+  font-size: 16px;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+}
+
+/* Uploading message */
+#uploadingMessage {
+  display: none;
+  margin-top: 10px;
+  color: var(--text);
+  font-style: italic;
+}
+
+/* Copy button inside code blocks */
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: -30px;
+  background: #10a37f;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.copy-btn-inline {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #10a37f;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Speaker button */
+.speaker-icon {
+  position: absolute;
+  right: -30px;
+  top: 8px;
+  font-size: 18px;
+  cursor: pointer;
+  color: #ccc;
+}
+
+/* Better scroll for chat window */
+.chat-window {
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+/* Adjust sidebar */
+.sidebar.hidden {
+  display: none;
+}
+.chat-wrapper { display: flex; height: 100vh; }
+.sidebar { width: 250px; background-color: var(--input-bg); padding: 20px; overflow-y: auto; border-right: 1px solid #555; transition: all 0.3s; }
+.sidebar.hidden { display: none; }
+.chat-session { margin-bottom: 10px; padding: 10px; background-color: var(--bg); border-radius: 5px; cursor: pointer; }
+.chat-session:hover { background-color: #666; }
+.main { flex: 1; display: flex; flex-direction: column; }
+.topbar { padding: 15px; background-color: var(--input-bg); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; }
+.chat-window { flex: 1; padding: 20px; overflow-y: auto; }
+.message-wrapper { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.message-wrapper.user { flex-direction: row-reverse; }
+.avatar { font-size: 20px; width: 32px; display: flex; justify-content: center; }
+.message { padding: 10px; border-radius: 8px; max-width: 70%; position: relative; }
+.user .message { background-color: var(--user-msg); }
+.bot .message { background-color: var(--bot-msg); }
+.speaker-icon, .copy-btn { position: absolute; right: -30px; top: 8px; cursor: pointer; color: #ccc; }
+.input-area { display: flex; padding: 10px; background-color: var(--input-bg); gap: 10px; }
+input[type="text"] { flex: 1; padding: 10px; border-radius: 8px; border: none; background-color: var(--bg); color: var(--text); }
+button { background-color: #10a37f; border: none; color: white; padding: 10px; border-radius: 8px; cursor: pointer; }
+button:hover { background-color: #0e8f6e; }
+pre { background-color: #1f2937; padding: 1em; border-radius: 0.5em; overflow-x: auto; }
+code { font-family: monospace; color: #fcd34d; }
+.search-bar { width: 100%; padding: 8px; background-color: var(--input-bg); border-radius: 8px; border: none; color: var(--text); }
+.sidebar-toggle { cursor: pointer; font-size: 1.5rem; color: var(--text); margin-right: 10px; }
+#uploadLabel { font-size: 0.9rem; margin-top: 5px; color: #ccc; }
+```
+
+  </style>
+</head>
+
+<body class="bg-gray-900 text-white">
+  <div class="chat-wrapper">
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar">
+      <div class="flex justify-between items-center">
+        <h2 class="text-xl">OpenGPT</h2>
+      </div>
+
+```
+  <div class="input-group mt-4">
+    <input type="search" class="search-bar" id="searchInput" placeholder="Search chats..." oninput="filterChats()">
+  </div>
+  <div class="my-2">
+    <button onclick="startNewChat()" class="w-full bg-blue-600 text-white p-2 rounded-md mt-2">+ New Chat</button>
+  </div>
+
+  <!-- Session List Container -->
+  <div id="sessionList">
+    <!-- Filled by JavaScript -->
+  </div>
+</div>
+
+<!-- Main Chat Area -->
+<div class="main">
+  <div class="topbar">
+    <div class="flex items-center gap-3">
+      <button onclick="toggleSidebar()" class="sidebar-toggle"><i class="bi bi-list"></i></button>
+      <div>OpenGPT</div>
+    </div>
+    <div class="flex gap-3">
+      <button onclick="toggleTheme()"><i class="bi bi-moon-stars"></i></button>
+    </div>
+  </div>
+
+  <div id="chatBox" class="chat-window"></div>
+
+  <!-- Uploading Message (added here) -->
+  <div id="uploadingMessage" style="display: none; color: gray; font-style: italic; text-align: center; margin-top: 10px;">
+    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+    Uploading... Please wait.
+  </div>
+
+  <div class="input-area">
+    <input type="text" id="messageInput" placeholder="Type your message..." onkeypress="if(event.key==='Enter')sendMessage()">
+    <button onclick="startListening()"><i class="bi bi-mic"></i></button>
+    <button onclick="sendMessage()"><i class="bi bi-send"></i></button>
+    <button onclick="document.getElementById('fileInput').click()"><i class="bi bi-paperclip"></i></button>
+    <input type="file" id="fileInput" multiple onchange="handleFileUpload()" style="display:none" >
+  </div>
+
+  <label id="uploadLabel"></label>
+
+  <div id="selectedFileName" style="margin-top:5px; color: gray; font-size: 0.9em;"></div>
+
+</div>
+```
+
+</div>
+
+<script>
+let uploadedFiles = []; // Store multiple uploaded files
+let currentSessionId = "{{ currentSessionId|default:0 }}";
+
+const messageInput = document.getElementById("messageInput");
+const chatContainer = document.getElementById("chatBox");
+const sessionList = document.getElementById("sessionList");
+const searchInput = document.getElementById("searchInput");
+
+const avatarIcon = '<i class="bi bi-person"></i>';
+const botIcon = '<i class="bi bi-cpu"></i>';
+let isSidebarOpen = true;
+
+// Toggle sidebar
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  isSidebarOpen = !isSidebarOpen;
+  sidebar.classList.toggle('hidden');
+}
+
+// Filter chats
+function filterChats() {
+  const query = searchInput.value.toLowerCase();
+  document.querySelectorAll('.chat-session').forEach(session => {
+    const title = session.textContent.toLowerCase();
+    session.style.display = title.includes(query) ? 'block' : 'none';
+  });
+}
+
+// Add message to chat
+function addMessage(text, sender) {
+  const wrapper = document.createElement("div");
+  wrapper.classList.add("message-wrapper", sender);
+  const avatar = document.createElement("div");
+  avatar.classList.add("avatar");
+  avatar.innerHTML = sender === "user" ? avatarIcon : botIcon;
+
+  const msg = document.createElement("div");
+  msg.classList.add("message", sender);
+  const messageText = document.createElement("span");
+  messageText.classList.add("message-text");
+
+  if (text.includes("```")) {
+    messageText.innerHTML = marked.parse(text);
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "copy-btn";
+    copyBtn.innerText = "Copy";
+    copyBtn.onclick = () => copyToClipboard(text);
+    msg.appendChild(copyBtn);
+  } else {
+    messageText.textContent = text;
+  }
+  msg.appendChild(messageText);
+
+  if (sender === "bot") {
+    const speakBtn = document.createElement("i");
+    speakBtn.className = "bi bi-volume-up speaker-icon";
+    speakBtn.title = "Speak";
+    speakBtn.onclick = () => speak(messageText.innerText || messageText.textContent);
+    msg.appendChild(speakBtn);
+  }
+
+  wrapper.appendChild(avatar);
+  wrapper.appendChild(msg);
+  chatContainer.appendChild(wrapper);
+  scrollToBottom();
+  return msg;
+}
+
+// Handle multiple file upload
+function handleFileUpload() {
+  const fileInput = document.getElementById('fileInput');
+  const selectedFileName = document.getElementById('selectedFileName');
+  const newFiles = Array.from(fileInput.files);
+
+  newFiles.forEach(file => {
+    if (!uploadedFiles.some(f => f.name === file.name)) {
+      uploadedFiles.push(file);
+    }
+  });
+
+  renderFilePreviews();
+  fileInput.value = "";
+}
+
+function removeUploadedFile(fileName) {
+  uploadedFiles = uploadedFiles.filter(file => file.name !== fileName);
+  renderFilePreviews();
+}
+
+function renderFilePreviews() {
+  const selectedFileName = document.getElementById('selectedFileName');
+  selectedFileName.innerHTML = "";
+  uploadedFiles.forEach(file => {
+    const fileDiv = document.createElement("div");
+    fileDiv.className = "file-preview";
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        fileDiv.innerHTML = `
+          <img src="${e.target.result}" alt="Preview" />
+          <span>${file.name}</span>
+          <button onclick="removeUploadedFile('${file.name}')">❌</button>
+        `;
+        selectedFileName.appendChild(fileDiv);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      fileDiv.innerHTML = `
+        📎 ${file.name}
+        <button onclick="removeUploadedFile('${file.name}')">❌</button>
+      `;
+      selectedFileName.appendChild(fileDiv);
+    }
+  });
+}
+
+// Send message
+async function sendMessage() {
+  const text = messageInput.value.trim();
+  if (!text && uploadedFiles.length === 0) return;
+
+  if (!currentSessionId) await createNewSession();
+
+  const uploadingMessage = document.getElementById('uploadingMessage');
+  uploadingMessage.style.display = "block";
+
+  // Show user message immediately
+  if (uploadedFiles.length > 0 && text) {
+    addMessage(uploadedFiles.map(f => `📎 ${f.name}`).join(", ") + "\n\n" + text, "user");
+  } else if (uploadedFiles.length > 0) {
+    addMessage(uploadedFiles.map(f => `📎 ${f.name}`).join(", "), "user");
+  } else {
+    addMessage(text, "user");
+  }
+
+  // Clear input & preview
+  messageInput.value = "";
+  document.getElementById('fileInput').value = "";
+  document.getElementById('selectedFileName').innerHTML = "";
+  const filesToSend = [...uploadedFiles];
+  uploadedFiles = [];
+
+  messageInput.disabled = true;
+  const botMsgDiv = addMessage("", "bot");
+  botMsgDiv.classList.add('blinking-cursor');
+
+  try {
+    const formData = new FormData();
+    formData.append("session_id", currentSessionId);
+    if (text) formData.append("message", text);
+    filesToSend.forEach((file, index) => {
+      formData.append('file', file);
+    });
+
+    const response = await fetch("{% url 'send_message' %}", {
+      method: "POST",
+      headers: { "X-CSRFToken": "{{ csrf_token }}" },
+      body: formData,
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let fullText = "";
+
+     while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      fullText += chunk;
+      botMsgDiv.innerHTML = marked.parse(fullText);
+      scrollToBottom();
+    }
+  } catch (err) {
+    botMsgDiv.textContent = "Error contacting server.";
+    console.error(err);
+  } finally {
+    botMsgDiv.classList.remove('blinking-cursor');
+    uploadingMessage.style.display = "none";
+    messageInput.disabled = false;
+    messageInput.focus();
+
+    // AFTER bot response completes:
+    enhanceCodeBlocks(); // Add copy buttons for code blocks
+
+    // Add speaker button again if needed
+    const speakBtn = document.createElement("i");
+    speakBtn.className = "bi bi-volume-up speaker-icon";
+    speakBtn.title = "Speak";
+    speakBtn.onclick = () => speak(botMsgDiv.innerText || botMsgDiv.textContent);
+    botMsgDiv.appendChild(speakBtn);
+  }
+}
+
+// Create new chat session
+async function createNewSession() {
+  try {
+    const response = await fetch("{% url 'new_chat_session' %}", {
+      method: "POST",
+      headers: { "X-CSRFToken": "{{ csrf_token }}" }
+    });
+    const data = await response.json();
+    if (data.session_id) {
+      currentSessionId = data.session_id;
+      chatContainer.innerHTML = "";
+      loadChatHistory();
+    } else {
+      alert("Error: Could not create session.");
+    }
+  } catch (err) {
+    console.error("Error creating new session:", err);
+  }
+}
+
+// Load previous chat history
+async function loadChatHistory() {
+  try {
+    const response = await fetch("{% url 'chat_history' %}");
+    const data = await response.json();
+    sessionList.innerHTML = "";
+    data.sessions.forEach(session => {
+      const item = document.createElement("div");
+      item.className = "chat-session p-2 my-2 rounded bg-gray-700";
+      item.innerText = session.title;
+      item.onclick = () => switchSession(session.id);
+      sessionList.appendChild(item);
+    });
+  } catch (err) {
+    console.error("Failed to load chat history", err);
+  }
+}
+
+// Switch session
+async function switchSession(sessionId) {
+  if (sessionId === currentSessionId) return;
+  currentSessionId = sessionId;
+  chatContainer.innerHTML = "";
+  try {
+    const response = await fetch(`/api/session/${sessionId}/messages/`);
+    const data = await response.json();
+    data.messages.forEach(msg => addMessage(msg.content, msg.role));
+  } catch (err) {
+    console.error("Failed to load session messages", err);
+  }
+}
+
+// Enhance code blocks
+function enhanceCodeBlocks() {
+  chatContainer.querySelectorAll('pre > code').forEach(code => {
+    const pre = code.parentElement;
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn-inline';
+    btn.innerText = 'Copy';
+    btn.onclick = () => copyToClipboard(code.innerText);
+    pre.style.position = 'relative';
+    pre.appendChild(btn);
+  });
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast("Code copied to clipboard!");
+  }).catch(err => {
+    console.error('Failed to copy: ', err);
+  });
+}
+
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerText = message;
+  document.body.appendChild(toast);
+
+  // Trigger reflow to allow animation
+  setTimeout(() => {
+    toast.classList.add('show');
+  }, 100);
+
+  // Remove the toast after 3 seconds
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => {
+      document.body.removeChild(toast);
+    }, 300);
+  }, 3000);
+}
+
+
+
+// Text-to-speech
+function speak(text) {
+  if (!text) return;
+  if (speechSynthesis.speaking) {
+    speechSynthesis.cancel();
+    return;
+  }
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.voice = speechSynthesis.getVoices().find(v => v.lang.startsWith("en"));
+  speechSynthesis.speak(utterance);
+}
+
+// Voice-to-text
+function startListening() {
+  if (!('webkitSpeechRecognition' in window)) {
+    alert("Speech recognition not supported."); return;
+  }
+  const recognition = new webkitSpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.interimResults = true;
+  recognition.onresult = (event) => {
+    const last = event.results.length - 1;
+    messageInput.value = event.results[last][0].transcript;
+  };
+  recognition.onerror = (event) => console.error(event);
+  recognition.start();
+}
+
+// Theme toggle
+function toggleTheme() {
+  const theme = document.body.getAttribute("data-theme");
+  document.body.setAttribute("data-theme", theme === "dark" ? "light" : "dark");
+}
+
+// Scroll chat to bottom
+function scrollToBottom() {
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadChatHistory();
+});
+</script>
+
+</body>
+</html>

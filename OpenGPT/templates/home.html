@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to OpenGPT</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script>
+    function toggleTheme() {
+      const root = document.documentElement;
+      const theme = root.getAttribute("data-theme");
+      const newTheme = theme === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", newTheme);
+      localStorage.setItem("theme", newTheme);
+      updateToggleIcon(newTheme);
+    }
+
+    function updateToggleIcon(theme) {
+      const icon = document.getElementById("theme-icon");
+      icon.textContent = theme === "dark" ? "🌙" : "🌞";
+    }
+
+    window.onload = () => {
+      const saved = localStorage.getItem("theme") || "dark";
+      document.documentElement.setAttribute("data-theme", saved);
+      updateToggleIcon(saved);
+    };
+  </script>
+  <style>
+    [data-theme="dark"] {
+      --bg: #1a1a1a;
+      --text: #ffffff;
+      --subtext: #9ca3af;
+      --button: #10a37f;
+      --hover: #0e8f6d;
+    }
+
+    [data-theme="light"] {
+      --bg: #ffffff;
+      --text: #000000;
+      --subtext: #4b5563;
+      --button: #10a37f;
+      --hover: #0e8f6d;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+    }
+
+    .btn {
+      background-color: var(--button);
+    }
+
+    .btn:hover {
+      background-color: var(--hover);
+    }
+
+    .switcher {
+      position: absolute;
+      top: 1.5rem;
+      right: 1.5rem;
+      font-size: 1.25rem;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .switcher:hover {
+      transform: scale(1.1);
+    }
+
+    .subtext {
+      color: var(--subtext);
+    }
+
+    .border-custom {
+      border-color: var(--subtext);
+    }
+
+    .hover-bg {
+      transition: background 0.3s ease;
+    }
+
+    .hover-bg:hover {
+      background-color: rgba(128, 128, 128, 0.15);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center px-4 text-center relative">
+  <!-- ChatGPT-style Theme Toggle Button -->
+  <button onclick="toggleTheme()" class="switcher">
+    <span id="theme-icon">🌙</span>
+  </button>
+
+  <!-- Logo & Heading -->
+  <div class="mb-6 mt-8">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg" alt="OpenGPT Logo" class="h-12 mx-auto mb-4" />
+    <p class="text-sm subtext">April 20, 2025 &middot; Product</p>
+    <h1 class="text-4xl font-bold mt-2 mb-4">Welcome to <span class="text-green-400">OpenGPT</span></h1>
+  </div>
+
+  <!-- Description -->
+  <p class="max-w-xl mb-8 text-lg subtext">
+    Your personal AI assistant for chatting, coding, and learning. Built to look and feel just like ChatGPT.
+  </p>
+
+  <!-- Buttons -->
+  <div class="flex flex-col sm:flex-row gap-4">
+    <a href="{% url 'chat' %}">
+      <button class="btn px-6 py-2 text-white font-semibold rounded-lg transition">Start Chatting</button>
+    </a>
+    <a href="{% url 'login' %}">
+      <button class="border border-custom text-sm px-6 py-2 rounded-lg hover-bg">Login</button>
+    </a>
+    <a href="{% url 'register' %}">
+      <button class="border border-custom text-sm px-6 py-2 rounded-lg hover-bg">Register</button>
+    </a>
+  </div>
+
+  <!-- Footer -->
+  <footer class="absolute bottom-4 text-sm subtext">
+    &copy; 2025 OpenGPT. Inspired by ChatGPT. All rights reserved.
+  </footer>
+</body>
+</html>
+

@@ -1,0 +1,7 @@
+Django
+torch
+transformers
+Pillow  # for future image handling
+python-docx  # for creating documents later
+python-pptx  # for creating PPTs later
+PyMuPDF  # for PDF summarization later
