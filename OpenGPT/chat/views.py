@@ -68,7 +68,7 @@ def chat_view(request):
         user=request.user, is_deleted=False
     ).exclude(id=new_session.id).order_by('-updated_at')
 
-    #rember
+    #remberCD
     # Group sessions by "Today", "Yesterday", "April 25, 2025", etc.
     grouped_sessions = {}
     for session in previous_sessions:
